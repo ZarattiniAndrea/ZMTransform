@@ -7,22 +7,34 @@ A project for zinc measurement and analysis.
 
 import sys
 import tkinter as tk
-import tkinter.filedialog
+from tkinter import scrolledtext, filedialog
 import pandas as pd
 import glob
 from typing import Any
 
+_message: str = "Zinc Project - Measurement Analysis"
+
+root = tk.Tk()  # Create the main application window
+root.title("Zinc Project")  
+root.geometry("400x300")
+
+# --- Area di Log --- #
+log_area = scrolledtext.ScrolledText(root, width=50, height=10)
+log_area.pack(padx=10, pady=10)
+
+def write_log(message:str): 
+    # Scrive un messaggio nell'area di log
+    log_area.insert(tk.END, message + "\n")
+    log_area.see(tk.END)
+    root.update_idletasks()
+
+
 
 def main() -> None:
-    root = tk.Tk()  # Create the main application window
-    root.title("Zinc Project")  
-    root.geometry("400x300") 
+    cartella = filedialog.askdirectory(title="Select a directory")  #apre una finestra di dialogo
+    write_log(f"Cartella selezionata: {cartella}")
 
-    cartella = tk.filedialog.askdirectory(title="Select a directory")  #apre una finestra di dialogo
-
-
-##### SE LA CARTELLA VIENE SELEZIONATA #####
-
+    ##### SE LA CARTELLA VIENE SELEZIONATA #####
     if cartella: 
 
     ##### Selezione della cartella BS e ricerca del file Excel associato #####
@@ -59,5 +71,7 @@ def main() -> None:
     print("Zinc Project Started")
 
 
-if __name__ == "__main__":
-    sys.exit(main())
+
+btn = tk.Button(root, text="Seleziona la cartella", command=main)
+btn.pack(pady=10)
+root.mainloop()  # Avvia il loop principale dell'applicazione Tkinter
