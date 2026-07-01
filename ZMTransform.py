@@ -51,6 +51,7 @@ def main() -> None:
             print("file excel non trovato in cartella TS")  # Stampa un messaggio se non sono stati trovati file Excel
             
         print(f"Selected directory: {cartella}")
+        
         print(f"Excel files found: {len(file_excelTS)}")
     else:
         print("No directory selected.")  # Print a message if no directory was selected
