@@ -5,7 +5,7 @@ Zinc Project - Measurement Analysis
 A project for zinc measurement and analysis.
 """
 
-import sys
+import sys, datetime, os, re
 import tkinter as tk
 from tkinter import scrolledtext, filedialog
 import pandas as pd
@@ -14,10 +14,11 @@ from typing import Any
 import openpyxl
 
 _message: str = "Zinc Project - Measurement Analysis"
+_data_ora: str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 root = tk.Tk()  # Create the main application window
 root.title("Zinc Project")  
-root.geometry("600x500")
+root.geometry("800x500")
 
 # --- Area di Log --- #
 log_area = scrolledtext.ScrolledText(root, wrap="word") # in questo modo l'area di log avrà una barra di scorrimento verticale
@@ -49,8 +50,17 @@ def main() -> None:
         if file_excelBS: #se il file excel è stato trovato
             write_log(f"File excel selezionato in cartella BS: {file_excelBS[0]}")
             excel_document = openpyxl.load_workbook(file_excelBS[0]) 
-            sheet = excel_document['Sheet1']
-            write_log(f"Valore della cella A1 nel file Excel BS: {sheet.cell(column = 1, row = 1).value}")
+            ws = excel_document.active
+            write_log(f"Valore della cella A1 nel file Excel BS: {ws['A1'].value}")
+            valA2 = ws.cell(column = 1, row = 2).value
+            valB2 = ws.cell(column = 2, row = 2).value
+            valC2 = ws.cell(column = 3, row = 2).value
+            valD2 = valB2 + valC2 / 2 
+            ws.cell(column = 4, row = 2).value = valD2
+            excel_document.save(file_excelBS[0])
+            write_log(f"{_data_ora} - Inserimento valore calcolate per coil con ID {valA2} : {valD2}")
+            
+
         else: 
             write_log("file excel non trovato in cartella BS")  # Stampa un messaggio se non sono stati trovati file Excel
 
