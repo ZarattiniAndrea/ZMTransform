@@ -8,6 +8,7 @@ A project for zinc measurement and analysis.
 import sys, datetime, os, re
 import tkinter as tk
 from tkinter import scrolledtext, filedialog
+from unittest import result
 import pandas as pd
 import glob
 from typing import Any
@@ -51,6 +52,7 @@ def main() -> None:
             write_log(f"File excel selezionato in cartella BS: {file_excelBS[0]}")
             excel_document = openpyxl.load_workbook(file_excelBS[0]) 
             ws = excel_document.active
+            '''
             write_log(f"Valore della cella A1 nel file Excel BS: {ws['A1'].value}")
             valA2 = ws.cell(column = 1, row = 2).value
             valB2 = ws.cell(column = 2, row = 2).value
@@ -58,8 +60,24 @@ def main() -> None:
             valD2 = valB2 + valC2 / 2 
             ws.cell(column = 4, row = 2).value = valD2
             excel_document.save(file_excelBS[0])
-            write_log(f"{_data_ora} - Inserimento valore calcolate per coil con ID {valA2} : {valD2}")
-            
+            write_log(f"{_data_ora} - Valore calcolato per coil ID {valA2} : {valD2}")
+            '''
+
+            #provo a fare una versione generica in cui non so a priori il numero di righe da leggere
+            righe = tuple(ws.iter_rows(min_row = 2, max_row = ws.max_row, min_col = 1, max_col = 4, values_only = True))
+            i = 1
+            for riga in righe:
+                coil_id = riga[0]
+                max_value = riga[1]
+                print(max_value)
+                min_value = riga[2]
+                print(min_value)
+                result = round((max_value + min_value) / 2, 3)
+                print(result)
+                ws.cell(column = 4, row = i+1).value = result
+                excel_document.save(file_excelBS[0])
+                write_log(f"{_data_ora} - Coil ID: {coil_id}, Max Value: {max_value}, Min Value: {min_value}, Calculated Value: {result} \n")
+                i = i + 1
 
         else: 
             write_log("file excel non trovato in cartella BS")  # Stampa un messaggio se non sono stati trovati file Excel
