@@ -11,16 +11,17 @@ from tkinter import scrolledtext, filedialog
 import pandas as pd
 import glob
 from typing import Any
+import openpyxl
 
 _message: str = "Zinc Project - Measurement Analysis"
 
 root = tk.Tk()  # Create the main application window
 root.title("Zinc Project")  
-root.geometry("400x300")
+root.geometry("600x500")
 
 # --- Area di Log --- #
-log_area = scrolledtext.ScrolledText(root, width=50, height=10)
-log_area.pack(padx=10, pady=10)
+log_area = scrolledtext.ScrolledText(root, wrap="word") # in questo modo l'area di log avrà una barra di scorrimento verticale
+log_area.pack(expand=True, fill="both", padx=10, pady=10)
 
 def write_log(message:str): 
     # Scrive un messaggio nell'area di log
@@ -40,38 +41,45 @@ def main() -> None:
     ##### Selezione della cartella BS e ricerca del file Excel associato #####
 
         file_excelBS = glob.glob(cartella + "/BS/*.xlsx")  # ottengo una lista di tutti i file Excel nella cartella selezionata 
+        numero_file = len(file_excelBS) # ottengo il numero dei file excel dentro alla cartella BS
+        write_log(f"Numero di file excel trovati in cartella BS: {numero_file}")
+        write_log(f"File excel trovati in cartella BS: {file_excelBS}")
+        
 
         if file_excelBS: #se il file excel è stato trovato
-            print("Excel files found:") 
-            print(file_excelBS)
-            print(f"il nome del file excel è: {file_excelBS[0]}")
+            write_log(f"File excel selezionato in cartella BS: {file_excelBS[0]}")
+            excel_document = openpyxl.load_workbook(file_excelBS[0]) 
+            sheet = excel_document['Sheet1']
+            write_log(f"Valore della cella A1 nel file Excel BS: {sheet.cell(column = 1, row = 1).value}")
         else: 
-            print("file excel non trovato in cartella BS")  # Stampa un messaggio se non sono stati trovati file Excel
+            write_log("file excel non trovato in cartella BS")  # Stampa un messaggio se non sono stati trovati file Excel
 
-        print(f"Selected directory: {cartella}")
-        print(f"Excel files found: {len(file_excelBS)}")  
 
     ##### Selezione della cartella TS e ricerca del file Excel associato #####
 
         file_excelTS = glob.glob(cartella + "/TS/*.xlsx")  # ottengo una lista di tutti i file Excel nella cartella selezionata 
+        numero_file = len(file_excelTS) # ottengo il numero dei file excel dentro alla cartella TS
+        write_log(f"Numero di file excel trovati in cartella TS: {numero_file}")
+        write_log(f"File excel trovati in cartella TS: {file_excelTS}")
 
         if file_excelTS: #se il file excel è stato trovato
-            print("Excel files found:")  
-            print(file_excelTS)  
-            print(f"il nome del file excel è: {file_excelTS[0]}") 
+            write_log(f"File excel selezionato in cartella TS: {file_excelTS[0]}")
         else:
-            print("file excel non trovato in cartella TS")  # Stampa un messaggio se non sono stati trovati file Excel
+            write_log("file excel non trovato in cartella TS")  # Stampa un messaggio se non sono stati trovati file Excel
             
-        print(f"Selected directory: {cartella}")
         
-        print(f"Excel files found: {len(file_excelTS)}")
     else:
         print("No directory selected.")  # Print a message if no directory was selected
 
     print("Zinc Project Started")
 
 
+frame_bottoni = tk.Frame(root)
+frame_bottoni.pack(pady=10)
 
-btn = tk.Button(root, text="Seleziona la cartella", command=main)
-btn.pack(pady=10)
+btn1 = tk.Button(frame_bottoni, text="Seleziona la cartella", command=main)
+btn1.grid(row=0, column=0, sticky="w", padx=5)
+btn2 = tk.Button(frame_bottoni, text="Esci", command=root.quit)
+btn2.grid(row=0, column=1, sticky="e", padx=5)
+
 root.mainloop()  # Avvia il loop principale dell'applicazione Tkinter
