@@ -5,21 +5,32 @@ Zinc Project - Measurement Analysis
 A project for zinc measurement and analysis.
 """
 
-import sys, datetime, os, re
+import sys, datetime, os, re, time, configparser
 import tkinter as tk
-from tkinter import scrolledtext, filedialog
+from tkinter import scrolledtext, filedialog, ttk
 from unittest import result
 import pandas as pd
 import glob
 from typing import Any
 import openpyxl
+from ctypes import windll
 
 _message: str = "Zinc Project - Measurement Analysis"
 _data_ora: str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+config = configparser.ConfigParser()
+config.read('config.ini')
+path = config['Impostazioni']['path']
+print(f"Path from config.ini: {path}")
+
+try: 
+    windll.shcore.SetProcessDpiAwareness(1)  # Imposta la consapevolezza DPI per migliorare la resa grafica su schermi ad alta risoluzione
+except Exception as e:
+    print(f"Errore durante l'impostazione della consapevolezza DPI: {e}")
+
 root = tk.Tk()  # Create the main application window
 root.title("Zinc Project")  
-root.geometry("800x500")
+root.geometry("1000x800")
 
 # --- Area di Log --- #
 log_area = scrolledtext.ScrolledText(root, wrap="word") # in questo modo l'area di log avrà una barra di scorrimento verticale
@@ -34,6 +45,11 @@ def write_log(message:str):
 
 
 def main() -> None:
+
+    ##### Technical sets #####
+    chargin_bar["value"] = 0 #min value
+    chargin_bar["maximum"] = 100 #max value
+
     cartella = filedialog.askdirectory(title="Select a directory")  #apre una finestra di dialogo
     write_log(f"Cartella selezionata: {cartella}")
 
@@ -76,6 +92,7 @@ def main() -> None:
                 print(result)
                 ws.cell(column = 4, row = i+1).value = result
                 excel_document.save(file_excelBS[0])
+                chargin_bar['value'] = (i / len(righe)) * 100  # Aggiorna la barra di caricamento
                 write_log(f"{_data_ora} - Coil ID: {coil_id}, Max Value: {max_value}, Min Value: {min_value}, Calculated Value: {result} \n")
                 i = i + 1
 
@@ -104,6 +121,10 @@ def main() -> None:
 
 frame_bottoni = tk.Frame(root)
 frame_bottoni.pack(pady=10)
+
+#creazione barra di caricamento
+chargin_bar = ttk.Progressbar(frame_bottoni, orient = "horizontal", length = 200, mode = "determinate")
+chargin_bar.grid(row=0, column=2, padx=5)
 
 btn1 = tk.Button(frame_bottoni, text="Seleziona la cartella", command=main)
 btn1.grid(row=0, column=0, sticky="w", padx=5)
