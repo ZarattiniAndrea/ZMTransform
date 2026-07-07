@@ -9,6 +9,7 @@ import sys, datetime, os, re, time, configparser
 import tkinter as tk
 from tkinter import scrolledtext, filedialog, ttk
 from unittest import result
+from pathlib import Path
 import pandas as pd
 import glob
 from typing import Any
@@ -28,7 +29,8 @@ try:
 except Exception as e:
     print(f"Errore durante l'impostazione della consapevolezza DPI: {e}")
 
-root = tk.Tk()  # Create the main application window
+### Main Application Window ###
+root = tk.Tk()
 root.title("Zinc Project")  
 root.geometry("1000x800")
 
@@ -42,6 +44,28 @@ def write_log(message:str):
     log_area.see(tk.END)
     root.update_idletasks()
 
+
+def create_excel_file(file_path: str) -> None:
+    '''Crea un file Excel'''
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Dati"
+    ws["A1"] = "Coil ID"
+    ws["B1"] = "DATA"
+    ws["C1"] = "BS TOT LEN"
+    ws["D1"] = "BS NUM CAMP"
+    ws["E1"] = "BS AVG"
+    ws["F1"] = "BS MIN"
+    ws["G1"] = "BS MAX"
+    ws["H1"] = "BS DEV STD"
+    ws["I1"] = "TS TOT LEN"
+    ws["J1"] = "TS NUM CAMP"
+    ws["K1"] = "TS AVG"
+    ws["L1"] = "TS MIN"
+    ws["M1"] = "TS MAX"
+    ws["N1"] = "TS DEV STD"
+    wb.save("esempio.xlsx")
+    
 
 
 def main() -> None:
@@ -62,22 +86,14 @@ def main() -> None:
         numero_file = len(file_excelBS) # ottengo il numero dei file excel dentro alla cartella BS
         write_log(f"Numero di file excel trovati in cartella BS: {numero_file}")
         write_log(f"File excel trovati in cartella BS: {file_excelBS}")
-        
+
+        print(f"Il file verrà salvato in: {path}")
+        create_excel_file(path)
 
         if file_excelBS: #se il file excel è stato trovato
             write_log(f"File excel selezionato in cartella BS: {file_excelBS[0]}")
             excel_document = openpyxl.load_workbook(file_excelBS[0]) 
             ws = excel_document.active
-            '''
-            write_log(f"Valore della cella A1 nel file Excel BS: {ws['A1'].value}")
-            valA2 = ws.cell(column = 1, row = 2).value
-            valB2 = ws.cell(column = 2, row = 2).value
-            valC2 = ws.cell(column = 3, row = 2).value
-            valD2 = valB2 + valC2 / 2 
-            ws.cell(column = 4, row = 2).value = valD2
-            excel_document.save(file_excelBS[0])
-            write_log(f"{_data_ora} - Valore calcolato per coil ID {valA2} : {valD2}")
-            '''
 
             #provo a fare una versione generica in cui non so a priori il numero di righe da leggere
             righe = tuple(ws.iter_rows(min_row = 2, max_row = ws.max_row, min_col = 1, max_col = 4, values_only = True))
@@ -85,11 +101,8 @@ def main() -> None:
             for riga in righe:
                 coil_id = riga[0]
                 max_value = riga[1]
-                print(max_value)
                 min_value = riga[2]
-                print(min_value)
                 result = round((max_value + min_value) / 2, 3)
-                print(result)
                 ws.cell(column = 4, row = i+1).value = result
                 excel_document.save(file_excelBS[0])
                 chargin_bar['value'] = (i / len(righe)) * 100  # Aggiorna la barra di caricamento
