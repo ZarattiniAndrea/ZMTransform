@@ -45,32 +45,65 @@ def write_log(message:str):
     root.update_idletasks()
 
 
-def create_excel_file(file_path: str) -> None:
-    '''Crea un file Excel'''
+def create_excel_file(file_path: str) -> None: #creo l'intestazione del file excel di destinazione
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Dati"
-    ws["A1"] = "Coil ID"
-    ws["B1"] = "DATA"
-    ws["C1"] = "BS TOT LEN"
-    ws["D1"] = "BS NUM CAMP"
-    ws["E1"] = "BS AVG"
-    ws["F1"] = "BS MIN"
-    ws["G1"] = "BS MAX"
-    ws["H1"] = "BS DEV STD"
-    ws["I1"] = "TS TOT LEN"
-    ws["J1"] = "TS NUM CAMP"
-    ws["K1"] = "TS AVG"
-    ws["L1"] = "TS MIN"
-    ws["M1"] = "TS MAX"
-    ws["N1"] = "TS DEV STD"
-    wb.save("esempio.xlsx")
+    ws["A1"] = "CoilID"
+    ws["B1"] = "DateTime"
+    ws["C1"] = "BS total length"
+    ws["D1"] = "BS Nominal"
+    ws["E1"] = "BS Avg"
+    ws["F1"] = "BS St.Dev"
+    ws["G1"] = "BS min"
+    ws["H1"] = "BS max"
+    ws["I1"] = "TS total length"
+    ws["J1"] = "TS Nominal"
+    ws["K1"] = "TS Avg"
+    ws["L1"] = "TS St.Dev"
+    ws["M1"] = "TS min"
+    ws["N1"] = "TS max  "
+    percorso = file_path / "Misurazioni Zinco.xlsx"
+    wb.save(percorso)
+
+def calculate_excel(data: list[list[Any]]) -> None: #funzione che esegue i calcoli
+    excel_document = openpyxl.load_workbook(data[0])    #qui c'è la lista di tutti i file excel che passo alla funzione di calcolo
+    result_excel = openpyxl.load_workbook(path + "/Misurazioni Zinco.xlsx")             #apro il workbook per i risultati
+
+    print(excel_document.sheetnames)                    #mostro i fogli disponibili
+    
+    Values = excel_document["Values"]                   #Foglio Values 
+    LengthProfiles = excel_document["LengthProfiles"]   #Foglio LengthProfiles
+
+    for file in data:
+        excel_document = openpyxl.load_workbook(file)
+        Values = excel_document["Values"]
+        CoildID = Values["B5"].value
+        print(f"CoilID: {CoildID}")
+        
+
+
     
 
+    #provo a fare una versione generica in cui non so a priori il numero di righe da leggere
+    '''
+    righe = tuple(ws.iter_rows(min_row = 2, max_row = ws.max_row, min_col = 1, max_col = 4, values_only = True))
+    i = 1
+    for riga in righe: 
+        coil_id = riga[0]
+        max_value = riga[1] 
+        min_value = riga[2]
+        result = round((max_value + min_value) / 2, 3)
+        ws.cell(column = 4, row = i+1).value = result
+        excel_document.save(data[0])
+        chargin_bar['value'] = (i / len(righe)) * 100  # Aggiorna la barra di caricamento
+        write_log(f"{_data_ora} - Coil ID: {coil_id}, Max Value: {max_value}, Min Value: {min_value}, Calculated Value: {result} \n")
+        i = i + 1
+    '''
 
 def main() -> None:
 
-    ##### Technical sets #####
+    ##### Technical sets (X BARRA DI CARICAMENTO) #####
     chargin_bar["value"] = 0 #min value
     chargin_bar["maximum"] = 100 #max value
 
@@ -80,34 +113,21 @@ def main() -> None:
     ##### SE LA CARTELLA VIENE SELEZIONATA #####
     if cartella: 
 
-    ##### Selezione della cartella BS e ricerca del file Excel associato #####
+    ##### Selezione della cartella BS e dei file Excel associati #####
 
         file_excelBS = glob.glob(cartella + "/BS/*.xlsx")  # ottengo una lista di tutti i file Excel nella cartella selezionata 
         numero_file = len(file_excelBS) # ottengo il numero dei file excel dentro alla cartella BS
+
         write_log(f"Numero di file excel trovati in cartella BS: {numero_file}")
         write_log(f"File excel trovati in cartella BS: {file_excelBS}")
 
         print(f"Il file verrà salvato in: {path}")
-        create_excel_file(path)
+
+        create_excel_file(Path(path)) #Creo il file excel (in seguito dovrò controllare se c'è gia o no)
 
         if file_excelBS: #se il file excel è stato trovato
             write_log(f"File excel selezionato in cartella BS: {file_excelBS[0]}")
-            excel_document = openpyxl.load_workbook(file_excelBS[0]) 
-            ws = excel_document.active
-
-            #provo a fare una versione generica in cui non so a priori il numero di righe da leggere
-            righe = tuple(ws.iter_rows(min_row = 2, max_row = ws.max_row, min_col = 1, max_col = 4, values_only = True))
-            i = 1
-            for riga in righe:
-                coil_id = riga[0]
-                max_value = riga[1]
-                min_value = riga[2]
-                result = round((max_value + min_value) / 2, 3)
-                ws.cell(column = 4, row = i+1).value = result
-                excel_document.save(file_excelBS[0])
-                chargin_bar['value'] = (i / len(righe)) * 100  # Aggiorna la barra di caricamento
-                write_log(f"{_data_ora} - Coil ID: {coil_id}, Max Value: {max_value}, Min Value: {min_value}, Calculated Value: {result} \n")
-                i = i + 1
+            calculate_excel(file_excelBS)
 
         else: 
             write_log("file excel non trovato in cartella BS")  # Stampa un messaggio se non sono stati trovati file Excel
