@@ -66,21 +66,34 @@ def create_excel_file(file_path: str) -> None: #creo l'intestazione del file exc
     percorso = file_path / "Misurazioni Zinco.xlsx"
     wb.save(percorso)
 
-def calculate_excel(data: list[list[Any]]) -> None: #funzione che esegue i calcoli
-    excel_document = openpyxl.load_workbook(data[0])    #qui c'è la lista di tutti i file excel che passo alla funzione di calcolo
-    result_excel = openpyxl.load_workbook(path + "/Misurazioni Zinco.xlsx")             #apro il workbook per i risultati
+def calculate_excel(data: list[list[Any]]) -> None:                                     #funzione che esegue i calcoli
+    #excel_document = openpyxl.load_workbook(data[0])                                    #qui c'è la lista di tutti i file excel che passo alla funzione di calcolo
+    result_file = os.path.join(path, "Misurazioni Zinco.xlsx")
+    result_excel = openpyxl.load_workbook(result_file)             #apro il workbook per i risultati
+    re = result_excel.active
 
-    print(excel_document.sheetnames)                    #mostro i fogli disponibili
+    #print(excel_document.sheetnames)                    #mostro i fogli disponibili
     
-    Values = excel_document["Values"]                   #Foglio Values 
-    LengthProfiles = excel_document["LengthProfiles"]   #Foglio LengthProfiles
+    #Values = excel_document["Values"]                   #Foglio Values 
+    #LengthProfiles = excel_document["LengthProfiles"]   #Foglio LengthProfiles
 
-    for file in data:
+    for i,file in enumerate(data, start=2):
         excel_document = openpyxl.load_workbook(file)
-        Values = excel_document["Values"]
-        CoildID = Values["B5"].value
-        print(f"CoilID: {CoildID}")
         
+        values = excel_document["Values"]
+        lengthprofiles = excel_document["LengthProfiles"]
+
+        CoildID = values["B5"].value
+        DateTime = values["B2"].value
+        total_length = lengthprofiles.cell(row=lengthprofiles.max_row, column=1).value
+
+        re.cell(column=1, row=i).value = CoildID
+        re.cell(column=2, row=i).value = DateTime
+        re.cell(column=3, row=i).value = total_length
+        chargin_bar['value'] = (i / len(data)) * 100  # Aggiorna la barra di caricamento
+        root.update_idletasks()
+
+    result_excel.save(result_file)
 
 
     
@@ -119,14 +132,14 @@ def main() -> None:
         numero_file = len(file_excelBS) # ottengo il numero dei file excel dentro alla cartella BS
 
         write_log(f"Numero di file excel trovati in cartella BS: {numero_file}")
-        write_log(f"File excel trovati in cartella BS: {file_excelBS}")
+        #write_log(f"File excel trovati in cartella BS: {file_excelBS}")
 
         print(f"Il file verrà salvato in: {path}")
 
         create_excel_file(Path(path)) #Creo il file excel (in seguito dovrò controllare se c'è gia o no)
 
         if file_excelBS: #se il file excel è stato trovato
-            write_log(f"File excel selezionato in cartella BS: {file_excelBS[0]}")
+            #write_log(f"File excel selezionato in cartella BS: {file_excelBS[0]}")
             calculate_excel(file_excelBS)
 
         else: 
@@ -138,7 +151,7 @@ def main() -> None:
         file_excelTS = glob.glob(cartella + "/TS/*.xlsx")  # ottengo una lista di tutti i file Excel nella cartella selezionata 
         numero_file = len(file_excelTS) # ottengo il numero dei file excel dentro alla cartella TS
         write_log(f"Numero di file excel trovati in cartella TS: {numero_file}")
-        write_log(f"File excel trovati in cartella TS: {file_excelTS}")
+        #write_log(f"File excel trovati in cartella TS: {file_excelTS}")
 
         if file_excelTS: #se il file excel è stato trovato
             write_log(f"File excel selezionato in cartella TS: {file_excelTS[0]}")
