@@ -5,7 +5,7 @@ Zinc Project - Measurement Analysis
 A project for zinc measurement and analysis.
 """
 
-import sys, datetime, os, re, time, configparser
+import sys, datetime, os, re, time, configparser, statistics
 import tkinter as tk
 from tkinter import scrolledtext, filedialog, ttk
 from unittest import result
@@ -85,21 +85,26 @@ def calculate_excel(data: list[list[Any]]) -> None:                             
 
         CoildID = values["B5"].value
         DateTime = values["B2"].value
+        Nominal = values["B4"].value
         total_length = lengthprofiles.cell(row=lengthprofiles.max_row, column=1).value
 
         try: 
-            #Calcolo della media
+            #Calcoli
             rows_avg = lengthprofiles.iter_rows(min_row=2, max_row=lengthprofiles.max_row, min_col=2, max_col=2, values_only=True)
-
+            values_avg  = [row[0] for row in rows_avg]
+            avg_bs      = sum(values_avg) / len(values_avg)
+            massimo     = max(values_avg)
+            minimo      = min(values_avg)
+            dev_std     = statistics.stdev(values_avg)
             
-            values_avg = [row[0] for row in rows_avg]
-            avg_bs = sum(values_avg) / len(values_avg)
-
-
             re.cell(column=1, row=i).value = CoildID
             re.cell(column=2, row=i).value = DateTime
             re.cell(column=3, row=i).value = total_length
+            re.cell(column=4, row=i).value = Nominal
             re.cell(column=5, row=i).value = avg_bs
+            re.cell(column=6, row=i).value = dev_std
+            re.cell(column=7, row=i).value = minimo
+            re.cell(column=8, row=i).value = massimo
             chargin_bar['value'] = (i / len(data)) * 100  # Aggiorna la barra di caricamento
             root.update_idletasks()
         except Exception as e: 
