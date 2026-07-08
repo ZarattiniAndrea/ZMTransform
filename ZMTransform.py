@@ -67,9 +67,9 @@ def create_excel_file(file_path: str) -> None: #creo l'intestazione del file exc
     wb.save(percorso)
 
 def calculate_excel(data: list[list[Any]]) -> None:                                     #funzione che esegue i calcoli
-    #excel_document = openpyxl.load_workbook(data[0])                                    #qui c'è la lista di tutti i file excel che passo alla funzione di calcolo
+    #excel_document = openpyxl.load_workbook(data[0])                                   #qui c'è la lista di tutti i file excel che passo alla funzione di calcolo
     result_file = os.path.join(path, "Misurazioni Zinco.xlsx")
-    result_excel = openpyxl.load_workbook(result_file)             #apro il workbook per i risultati
+    result_excel = openpyxl.load_workbook(result_file)                                  #apro il workbook per i risultati
     re = result_excel.active
 
     #print(excel_document.sheetnames)                    #mostro i fogli disponibili
@@ -77,7 +77,7 @@ def calculate_excel(data: list[list[Any]]) -> None:                             
     #Values = excel_document["Values"]                   #Foglio Values 
     #LengthProfiles = excel_document["LengthProfiles"]   #Foglio LengthProfiles
 
-    for i,file in enumerate(data, start=2):
+    for i,file in enumerate(data, start=2):              #ciclo sui file excel 
         excel_document = openpyxl.load_workbook(file)
         
         values = excel_document["Values"]
@@ -87,11 +87,23 @@ def calculate_excel(data: list[list[Any]]) -> None:                             
         DateTime = values["B2"].value
         total_length = lengthprofiles.cell(row=lengthprofiles.max_row, column=1).value
 
-        re.cell(column=1, row=i).value = CoildID
-        re.cell(column=2, row=i).value = DateTime
-        re.cell(column=3, row=i).value = total_length
-        chargin_bar['value'] = (i / len(data)) * 100  # Aggiorna la barra di caricamento
-        root.update_idletasks()
+        try: 
+            #Calcolo della media
+            rows_avg = lengthprofiles.iter_rows(min_row=2, max_row=lengthprofiles.max_row, min_col=2, max_col=2, values_only=True)
+
+            
+            values_avg = [row[0] for row in rows_avg]
+            avg_bs = sum(values_avg) / len(values_avg)
+
+
+            re.cell(column=1, row=i).value = CoildID
+            re.cell(column=2, row=i).value = DateTime
+            re.cell(column=3, row=i).value = total_length
+            re.cell(column=5, row=i).value = avg_bs
+            chargin_bar['value'] = (i / len(data)) * 100  # Aggiorna la barra di caricamento
+            root.update_idletasks()
+        except Exception as e: 
+            write_log(f"{file}: NOT OK \n")
 
     result_excel.save(result_file)
 
