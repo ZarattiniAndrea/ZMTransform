@@ -5,7 +5,7 @@ Zinc Project - Measurement Analysis
 A project for zinc measurement and analysis.
 """
 
-import sys, datetime, os, re, time, configparser, statistics
+import sys, datetime, os, re, time, configparser, statistics, threading
 import tkinter as tk
 from tkinter import scrolledtext, filedialog, ttk
 from unittest import result
@@ -72,11 +72,6 @@ def calculate_excel(data: list[list[Any]]) -> None:                             
     result_excel = openpyxl.load_workbook(result_file)                                  #apro il workbook per i risultati
     re = result_excel.active
 
-    #print(excel_document.sheetnames)                    #mostro i fogli disponibili
-    
-    #Values = excel_document["Values"]                   #Foglio Values 
-    #LengthProfiles = excel_document["LengthProfiles"]   #Foglio LengthProfiles
-
     for i,file in enumerate(data, start=2):              #ciclo sui file excel 
         excel_document = openpyxl.load_workbook(file)
         
@@ -110,26 +105,12 @@ def calculate_excel(data: list[list[Any]]) -> None:                             
         except Exception as e: 
             write_log(f"{file}: NOT OK \n")
 
-    result_excel.save(result_file)
+    # Permetto di definire dall'utente il percorso di destinazione
+    result_file = filedialog.asksaveasfilename(title="Salva il file con nome",initialfile="Misuazioni_Zinco.xlsx", defaultextension=".xlsx", filetypes=[("File Excel", "*.xlsx")])
+    if result_file:
+        result_excel.save(result_file)
 
-
-    
-
-    #provo a fare una versione generica in cui non so a priori il numero di righe da leggere
-    '''
-    righe = tuple(ws.iter_rows(min_row = 2, max_row = ws.max_row, min_col = 1, max_col = 4, values_only = True))
-    i = 1
-    for riga in righe: 
-        coil_id = riga[0]
-        max_value = riga[1] 
-        min_value = riga[2]
-        result = round((max_value + min_value) / 2, 3)
-        ws.cell(column = 4, row = i+1).value = result
-        excel_document.save(data[0])
-        chargin_bar['value'] = (i / len(righe)) * 100  # Aggiorna la barra di caricamento
-        write_log(f"{_data_ora} - Coil ID: {coil_id}, Max Value: {max_value}, Min Value: {min_value}, Calculated Value: {result} \n")
-        i = i + 1
-    '''
+    write_log("Elaborazione dei file in BS completata")
 
 def main() -> None:
 
@@ -149,16 +130,15 @@ def main() -> None:
         numero_file = len(file_excelBS) # ottengo il numero dei file excel dentro alla cartella BS
 
         write_log(f"Numero di file excel trovati in cartella BS: {numero_file}")
-        #write_log(f"File excel trovati in cartella BS: {file_excelBS}")
 
         print(f"Il file verrà salvato in: {path}")
 
         create_excel_file(Path(path)) #Creo il file excel (in seguito dovrò controllare se c'è gia o no)
 
         if file_excelBS: #se il file excel è stato trovato
-            #write_log(f"File excel selezionato in cartella BS: {file_excelBS[0]}")
-            calculate_excel(file_excelBS)
-
+            #I calcoli vengono fatti in un thread separato in modo da non bloccare la GUI
+            thread = threading.Thread(target=calculate_excel, args=(file_excelBS,), daemon=True)
+            thread.start()
         else: 
             write_log("file excel non trovato in cartella BS")  # Stampa un messaggio se non sono stati trovati file Excel
 
@@ -168,7 +148,6 @@ def main() -> None:
         file_excelTS = glob.glob(cartella + "/TS/*.xlsx")  # ottengo una lista di tutti i file Excel nella cartella selezionata 
         numero_file = len(file_excelTS) # ottengo il numero dei file excel dentro alla cartella TS
         write_log(f"Numero di file excel trovati in cartella TS: {numero_file}")
-        #write_log(f"File excel trovati in cartella TS: {file_excelTS}")
 
         if file_excelTS: #se il file excel è stato trovato
             write_log(f"File excel selezionato in cartella TS: {file_excelTS[0]}")
