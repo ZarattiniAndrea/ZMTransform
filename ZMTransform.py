@@ -44,73 +44,109 @@ def write_log(message:str):
     log_area.see(tk.END)
     root.update_idletasks()
 
+def set_TS(data: list[list[Any]]) -> dict:
+    ts_files = {}
+    for file in data:
+        wb = openpyxl.load_workbook(file)
+        coil = wb["Values"]["B5"].value
+        ts_files[coil] = file
+    return ts_files
 
-def create_excel_file(file_path: str) -> None: #creo l'intestazione del file excel di destinazione
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Dati"
-    ws["A1"] = "CoilID"
-    ws["B1"] = "DateTime"
-    ws["C1"] = "BS total length"
-    ws["D1"] = "BS Nominal"
-    ws["E1"] = "BS Avg"
-    ws["F1"] = "BS St.Dev"
-    ws["G1"] = "BS min"
-    ws["H1"] = "BS max"
-    ws["I1"] = "TS total length"
-    ws["J1"] = "TS Nominal"
-    ws["K1"] = "TS Avg"
-    ws["L1"] = "TS St.Dev"
-    ws["M1"] = "TS min"
-    ws["N1"] = "TS max  "
-    percorso = file_path / "Misurazioni Zinco.xlsx"
-    wb.save(percorso)
+#FUNZIONE CHE ESEGUE I CALCOLI 
+def calculate_excel(data_BS: list[list[Any]], data_TS: list[list[Any]], result_file: str) -> None:
+    print(len(data_BS), len(data_TS))
+    #inserisco a dizionario tutti i valori di TS per leggerli UNA SOLA VOLTA
+    ts_files = set_TS(data_TS)
 
-def calculate_excel(data: list[list[Any]]) -> None:                                     #funzione che esegue i calcoli
-    #excel_document = openpyxl.load_workbook(data[0])                                   #qui c'è la lista di tutti i file excel che passo alla funzione di calcolo
-    result_file = os.path.join(path, "Misurazioni Zinco.xlsx")
-    result_excel = openpyxl.load_workbook(result_file)                                  #apro il workbook per i risultati
-    re = result_excel.active
+    #se il file excel che contiene i risultati esiste, lo apro
+    if os.path.exists(result_file):
+        result_excel = openpyxl.load_workbook(result_file) #apro il workbook per i risultati    
+        re = result_excel.active
+    #altrimenti lo creo
+    else: 
+        result_excel = openpyxl.Workbook()
+        re = result_excel.active
+        re.title = "Dati"
+        re["A1"] = "CoilID"
+        re["B1"] = "DateTime"
+        re["C1"] = "BS total length"
+        re["D1"] = "BS Nominal"
+        re["E1"] = "BS Avg"
+        re["F1"] = "BS St.Dev"
+        re["G1"] = "BS min"
+        re["H1"] = "BS max"
+        re["I1"] = "TS total length"
+        re["J1"] = "TS Nominal"
+        re["K1"] = "TS Avg"
+        re["L1"] = "TS St.Dev"
+        re["M1"] = "TS min"
+        re["N1"] = "TS max"
 
-    for i,file in enumerate(data, start=2):              #ciclo sui file excel 
-        excel_document = openpyxl.load_workbook(file)
-        
-        values = excel_document["Values"]
-        lengthprofiles = excel_document["LengthProfiles"]
+    for i,file in enumerate(data_BS, start=2):         #ciclo sui file excel 
+        excel_document_bs  = openpyxl.load_workbook(file)
 
-        CoildID = values["B5"].value
-        DateTime = values["B2"].value
-        Nominal = values["B4"].value
-        total_length = lengthprofiles.cell(row=lengthprofiles.max_row, column=1).value
+        values          = excel_document_bs["Values"]
+        lengthprofiles  = excel_document_bs["LengthProfiles"]
+
+        CoildID_BS      = values["B5"].value
+        DateTime        = values["B2"].value
+        Nominal         = values["B4"].value
+        total_length    = lengthprofiles.cell(row=lengthprofiles.max_row, column=1).value
 
         try: 
-            #Calcoli
-            rows_avg = lengthprofiles.iter_rows(min_row=2, max_row=lengthprofiles.max_row, min_col=2, max_col=2, values_only=True)
+            #Calcoli PER BS
+            rows_avg    = lengthprofiles.iter_rows(min_row=2, max_row=lengthprofiles.max_row, min_col=2, max_col=2, values_only=True)
             values_avg  = [row[0] for row in rows_avg]
             avg_bs      = sum(values_avg) / len(values_avg)
-            massimo     = max(values_avg)
-            minimo      = min(values_avg)
-            dev_std     = statistics.stdev(values_avg)
+            massimo_bs  = max(values_avg)
+            minimo_bs   = min(values_avg)
+            dev_std_bs  = statistics.stdev(values_avg)
             
-            re.cell(column=1, row=i).value = CoildID
+            re.cell(column=1, row=i).value = CoildID_BS
             re.cell(column=2, row=i).value = DateTime
             re.cell(column=3, row=i).value = total_length
             re.cell(column=4, row=i).value = Nominal
             re.cell(column=5, row=i).value = avg_bs
-            re.cell(column=6, row=i).value = dev_std
-            re.cell(column=7, row=i).value = minimo
-            re.cell(column=8, row=i).value = massimo
-            chargin_bar['value'] = (i / len(data)) * 100  # Aggiorna la barra di caricamento
+            re.cell(column=6, row=i).value = dev_std_bs
+            re.cell(column=7, row=i).value = minimo_bs
+            re.cell(column=8, row=i).value = massimo_bs
+            chargin_bar['value'] = (i / len(data_BS)) * 100  # Aggiorna la barra di caricamento
             root.update_idletasks()
         except Exception as e: 
             write_log(f"{file}: NOT OK \n")
 
+        if CoildID_BS in ts_files: 
+            try: 
+                #Calcoli PER TS
+                file_ts             = ts_files[CoildID_BS]
+                excel_document_ts   = openpyxl.load_workbook(file_ts)
+                lengthprofiles_ts   = excel_document_ts["LengthProfiles"]
+                rows_avg_ts         = lengthprofiles_ts.iter_rows(min_row=2, max_row=lengthprofiles_ts.max_row, min_col=2, max_col=2, values_only=True)
+                values_avg_ts       = [row[0] for row in rows_avg_ts]
+                avg_ts              = sum(values_avg_ts) / len(values_avg_ts)
+                massimo_ts          = max(values_avg_ts)
+                minimo_ts           = min(values_avg_ts)
+                dev_std_ts          = statistics.stdev(values_avg_ts)
+                total_length_ts     = lengthprofiles_ts.cell(row=lengthprofiles_ts.max_row, column=1).value
+
+                re.cell(column=9, row=i).value  = total_length_ts
+                re.cell(column=11, row=i).value = avg_ts
+                re.cell(column=12, row=i).value = dev_std_ts
+                re.cell(column=13, row=i).value = minimo_ts
+                re.cell(column=14, row=i).value = massimo_ts
+                print(f"Corrispetivo del CoilID: {CoildID_BS} è presente nel file: {file_ts}")
+
+            except Exception as e: 
+                write_log(f"{ts_files}: NOT OK FOR TS - {e} \n")
+    #Chiudo i documenti
+    excel_document_bs.close()
+    excel_document_ts.close()
+        
     # Permetto di definire dall'utente il percorso di destinazione
-    result_file = filedialog.asksaveasfilename(title="Salva il file con nome",initialfile="Misuazioni_Zinco.xlsx", defaultextension=".xlsx", filetypes=[("File Excel", "*.xlsx")])
+    result_file = filedialog.asksaveasfilename(title="Salva il file con nome",initialfile="Misurazioni_Zinco.xlsx", defaultextension=".xlsx", filetypes=[("File Excel", "*.xlsx")])
     if result_file:
         result_excel.save(result_file)
 
-    write_log("Elaborazione dei file in BS completata")
 
 def main() -> None:
 
@@ -126,39 +162,43 @@ def main() -> None:
 
     ##### Selezione della cartella BS e dei file Excel associati #####
 
-        file_excelBS = glob.glob(cartella + "/BS/*.xlsx")  # ottengo una lista di tutti i file Excel nella cartella selezionata 
-        numero_file = len(file_excelBS) # ottengo il numero dei file excel dentro alla cartella BS
+        file_excelBS = glob.glob(cartella + "/BS/*.xlsx")  # ottengo una lista di tutti i file Excel nella cartella BS
+        file_excelTS = glob.glob(cartella + "/TS/*.xlsx")  # ottengo una lista di tutti i file Excel nella cartella TS 
 
-        write_log(f"Numero di file excel trovati in cartella BS: {numero_file}")
+        numero_fileBS = len(file_excelBS) # ottengo il numero dei file excel dentro alla cartella BS
+        numero_fileTS = len(file_excelTS) # ottengo il numero dei file excel dentro alla cartella TS
+
+        write_log(f"Numero di file excel trovati in cartella BS: {numero_fileBS}")
+        write_log(f"Numero di file excel trovati in cartella TS: {numero_fileTS}")
 
         print(f"Il file verrà salvato in: {path}")
 
-        create_excel_file(Path(path)) #Creo il file excel (in seguito dovrò controllare se c'è gia o no)
+        result_file = os.path.join(path, "Misurazioni Zinco.xlsx")
 
         if file_excelBS: #se il file excel è stato trovato
+            if file_excelTS: 
+                calculate_excel(file_excelBS, file_excelTS, result_file)
             #I calcoli vengono fatti in un thread separato in modo da non bloccare la GUI
-            thread = threading.Thread(target=calculate_excel, args=(file_excelBS,), daemon=True)
-            thread.start()
+            #thread = threading.Thread(target=calculate_excel, args=(file_excelBS,), daemon=True)
+            #thread.start()
         else: 
             write_log("file excel non trovato in cartella BS")  # Stampa un messaggio se non sono stati trovati file Excel
 
 
     ##### Selezione della cartella TS e ricerca del file Excel associato #####
-
-        file_excelTS = glob.glob(cartella + "/TS/*.xlsx")  # ottengo una lista di tutti i file Excel nella cartella selezionata 
-        numero_file = len(file_excelTS) # ottengo il numero dei file excel dentro alla cartella TS
-        write_log(f"Numero di file excel trovati in cartella TS: {numero_file}")
-
-        if file_excelTS: #se il file excel è stato trovato
-            write_log(f"File excel selezionato in cartella TS: {file_excelTS[0]}")
-        else:
-            write_log("file excel non trovato in cartella TS")  # Stampa un messaggio se non sono stati trovati file Excel
-            
+        '''
+            if file_excelTS: #se il file excel è stato trovato
+                calculate_excel(file_excelTS, result_file)
+                write_log("File excel TS trovato")
+            else:
+                write_log("file excel non trovato in cartella TS")  # Stampa un messaggio se non sono stati trovati file Excel
+        '''
         
     else:
         print("No directory selected.")  # Print a message if no directory was selected
 
     print("Zinc Project Started")
+    write_log("ELABORAZIONE TERMINATA")
 
 
 frame_bottoni = tk.Frame(root)
