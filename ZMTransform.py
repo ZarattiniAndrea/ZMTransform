@@ -44,19 +44,25 @@ def write_log(message:str):
     log_area.see(tk.END)
     root.update_idletasks()
 
-def set_TS(data: list[list[Any]]) -> dict:
+def setting_TS(data: list[list[Any]]) -> dict:
     ts_files = {}
     for file in data:
         wb = openpyxl.load_workbook(file)
-        coil = wb["Values"]["B5"].value
+        values = wb["Values"]
+        #Il valore del CoilID non è detto che sia sempre nella stessa posizione
+        for row in values.iter_rows(min_col=1, max_col=1): 
+            cella_ID = row[0]
+            if cella_ID.value == "CoilID":
+                coil = values.cell(row = cella_ID.row, column= cella_ID.column + 1).value
         ts_files[coil] = file
+        wb.close()
     return ts_files
 
 #FUNZIONE CHE ESEGUE I CALCOLI 
 def calculate_excel(data_BS: list[list[Any]], data_TS: list[list[Any]], result_file: str) -> None:
     print(len(data_BS), len(data_TS))
     #inserisco a dizionario tutti i valori di TS per leggerli UNA SOLA VOLTA
-    ts_files = set_TS(data_TS)
+    ts_files = setting_TS(data_TS)
 
     #se il file excel che contiene i risultati esiste, lo apro
     if os.path.exists(result_file):
@@ -88,9 +94,22 @@ def calculate_excel(data_BS: list[list[Any]], data_TS: list[list[Any]], result_f
         values          = excel_document_bs["Values"]
         lengthprofiles  = excel_document_bs["LengthProfiles"]
 
-        CoildID_BS      = values["B5"].value
+
+        for row in values.iter_rows(min_col=1, max_col=1): 
+            cella_ID = row[0]
+            if cella_ID.value == "CoilID":
+                CoilID_BS = values.cell(row = cella_ID.row, column= cella_ID.column + 1).value
+        #CoilID_BS      = values["B5"].value
         DateTime        = values["B2"].value
-        Nominal         = values["B4"].value
+        
+        
+        #Come con CoilID, ma con nominal
+        Nominal = None
+        for row in values.iter_rows(min_col=1, max_col=1): 
+            cella_nominal = row[0]
+            if cella_nominal.value == "Coating_BS_Nominal":
+                Nominal = values.cell(row = cella_nominal.row, column= cella_nominal.column + 1).value
+        
         total_length    = lengthprofiles.cell(row=lengthprofiles.max_row, column=1).value
 
         try: 
@@ -102,7 +121,7 @@ def calculate_excel(data_BS: list[list[Any]], data_TS: list[list[Any]], result_f
             minimo_bs   = min(values_avg)
             dev_std_bs  = statistics.stdev(values_avg)
             
-            re.cell(column=1, row=i).value = CoildID_BS
+            re.cell(column=1, row=i).value = CoilID_BS
             re.cell(column=2, row=i).value = DateTime
             re.cell(column=3, row=i).value = total_length
             re.cell(column=4, row=i).value = Nominal
@@ -110,16 +129,25 @@ def calculate_excel(data_BS: list[list[Any]], data_TS: list[list[Any]], result_f
             re.cell(column=6, row=i).value = dev_std_bs
             re.cell(column=7, row=i).value = minimo_bs
             re.cell(column=8, row=i).value = massimo_bs
+        except Exception as e: 
+            write_log(f"{file}: NOT OK BS - {e} \n")
+            continue
+        finally:
             chargin_bar['value'] = (i / len(data_BS)) * 100  # Aggiorna la barra di caricamento
             root.update_idletasks()
-        except Exception as e: 
-            write_log(f"{file}: NOT OK \n")
 
-        if CoildID_BS in ts_files: 
+        if CoilID_BS in ts_files: 
             try: 
                 #Calcoli PER TS
-                file_ts             = ts_files[CoildID_BS]
+                file_ts             = ts_files[CoilID_BS]
                 excel_document_ts   = openpyxl.load_workbook(file_ts)
+                values_ts           = excel_document_ts["Values"]
+
+                for row in values_ts.iter_rows(min_col=1, max_col=1): 
+                    cella_nominal_ts = row[0]
+                    if cella_nominal_ts.value == "Coating_TS_Nominal":
+                        nominal_ts = values.cell(row = cella_nominal_ts.row, column= cella_nominal_ts.column + 1).value
+                
                 lengthprofiles_ts   = excel_document_ts["LengthProfiles"]
                 rows_avg_ts         = lengthprofiles_ts.iter_rows(min_row=2, max_row=lengthprofiles_ts.max_row, min_col=2, max_col=2, values_only=True)
                 values_avg_ts       = [row[0] for row in rows_avg_ts]
@@ -130,22 +158,26 @@ def calculate_excel(data_BS: list[list[Any]], data_TS: list[list[Any]], result_f
                 total_length_ts     = lengthprofiles_ts.cell(row=lengthprofiles_ts.max_row, column=1).value
 
                 re.cell(column=9, row=i).value  = total_length_ts
+                re.cell(column=10, row=i).value = nominal_ts
                 re.cell(column=11, row=i).value = avg_ts
                 re.cell(column=12, row=i).value = dev_std_ts
                 re.cell(column=13, row=i).value = minimo_ts
                 re.cell(column=14, row=i).value = massimo_ts
-                print(f"Corrispetivo del CoilID: {CoildID_BS} è presente nel file: {file_ts}")
+                print(f"Corrispetivo del CoilID: {CoilID_BS} è presente nel file: {file_ts}")
 
             except Exception as e: 
-                write_log(f"{ts_files}: NOT OK FOR TS - {e} \n")
-    #Chiudo i documenti
+                write_log(f"{file_ts}: NOT OK FOR TS - {e} \n")
+                continue
+            finally: 
+                excel_document_ts.close()
+                
     excel_document_bs.close()
-    excel_document_ts.close()
         
     # Permetto di definire dall'utente il percorso di destinazione
     result_file = filedialog.asksaveasfilename(title="Salva il file con nome",initialfile="Misurazioni_Zinco.xlsx", defaultextension=".xlsx", filetypes=[("File Excel", "*.xlsx")])
     if result_file:
         result_excel.save(result_file)
+        write_log("ELABORAZIONE TERMINATA")
 
 
 def main() -> None:
@@ -177,28 +209,17 @@ def main() -> None:
 
         if file_excelBS: #se il file excel è stato trovato
             if file_excelTS: 
-                calculate_excel(file_excelBS, file_excelTS, result_file)
-            #I calcoli vengono fatti in un thread separato in modo da non bloccare la GUI
-            #thread = threading.Thread(target=calculate_excel, args=(file_excelBS,), daemon=True)
-            #thread.start()
+                #calculate_excel(file_excelBS, file_excelTS, result_file)
+                #I calcoli vengono fatti in un thread separato in modo da non bloccare la GUI
+                thread = threading.Thread(target=calculate_excel, args=(file_excelBS, file_excelTS, result_file), daemon=True)
+                thread.start()
         else: 
             write_log("file excel non trovato in cartella BS")  # Stampa un messaggio se non sono stati trovati file Excel
 
-
-    ##### Selezione della cartella TS e ricerca del file Excel associato #####
-        '''
-            if file_excelTS: #se il file excel è stato trovato
-                calculate_excel(file_excelTS, result_file)
-                write_log("File excel TS trovato")
-            else:
-                write_log("file excel non trovato in cartella TS")  # Stampa un messaggio se non sono stati trovati file Excel
-        '''
-        
     else:
         print("No directory selected.")  # Print a message if no directory was selected
 
     print("Zinc Project Started")
-    write_log("ELABORAZIONE TERMINATA")
 
 
 frame_bottoni = tk.Frame(root)
