@@ -20,10 +20,12 @@ from ctypes import windll
 _message: str = "Zinc Project - Measurement Analysis"
 _data_ora: str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+
 config = configparser.ConfigParser()
 config.read('config.ini')
 path = config['Impostazioni']['path']
 print(f"Path from config.ini: {path}")
+
 
 try: 
     windll.shcore.SetProcessDpiAwareness(1)  # Imposta la consapevolezza DPI per migliorare la resa grafica su schermi ad alta risoluzione
@@ -60,6 +62,8 @@ def setting_TS(data: list[list[Any]]) -> dict:
         wb.close()
     return ts_files
 
+
+#----FUNZIONE DI SALVATAGGIO RISULTATO EXCEL----#
 def user_save(result_file: str, result_excel) -> None: 
     result_file = filedialog.asksaveasfilename(title="Salva il file con nome",initialfile="Misurazioni_Zinco.xlsx", defaultextension=".xlsx", filetypes=[("File Excel", "*.xlsx")])
     try: 
@@ -71,6 +75,7 @@ def user_save(result_file: str, result_excel) -> None:
         mb.showerror("Errore di permesso", f"Non è possibile salvare il file. Controlla se il file è aperto in un'altra applicazione o se hai i permessi necessari. \nDettagli: {e}")
     except Exception as e:
         write_log(f"Errore durante il salvataggio del file: {e}")
+#-----------------------------------------------#
 
 
 #FUNZIONE CHE ESEGUE I CALCOLI 
@@ -193,6 +198,7 @@ def calculate_excel(data_BS: list[list[Any]], data_TS: list[list[Any]], result_f
     excel_document_bs.close()
 
     user_save(result_file, result_excel)  # Chiamo la funzione per salvare il file con il percorso scelto dall'utente
+
 
 def main() -> None:
 
