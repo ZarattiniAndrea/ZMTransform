@@ -38,6 +38,7 @@ root.geometry("1000x800")
 # --- Area di Log --- #
 log_area = scrolledtext.ScrolledText(root, wrap="word") # in questo modo l'area di log avrà una barra di scorrimento verticale
 log_area.pack(expand=True, fill="both", padx=10, pady=10)
+# ------------------- #
 
 def write_log(message:str): 
     # Scrive un messaggio nell'area di log
@@ -58,6 +59,19 @@ def setting_TS(data: list[list[Any]]) -> dict:
         ts_files[coil] = file
         wb.close()
     return ts_files
+
+def user_save(result_file: str, result_excel) -> None: 
+    result_file = filedialog.asksaveasfilename(title="Salva il file con nome",initialfile="Misurazioni_Zinco.xlsx", defaultextension=".xlsx", filetypes=[("File Excel", "*.xlsx")])
+    try: 
+        if result_file:
+            result_excel.save(result_file)
+            write_log("ELABORAZIONE TERMINATA")
+    except PermissionError as e:
+        write_log(f"Errore di permesso durante il salvataggio del file: {e}")
+        mb.showerror("Errore di permesso", f"Non è possibile salvare il file. Controlla se il file è aperto in un'altra applicazione o se hai i permessi necessari. \nDettagli: {e}")
+    except Exception as e:
+        write_log(f"Errore durante il salvataggio del file: {e}")
+
 
 #FUNZIONE CHE ESEGUE I CALCOLI 
 def calculate_excel(data_BS: list[list[Any]], data_TS: list[list[Any]], result_file: str) -> None:
@@ -148,7 +162,7 @@ def calculate_excel(data_BS: list[list[Any]], data_TS: list[list[Any]], result_f
                     for row in values_ts.iter_rows(min_col=1, max_col=1): 
                         cella_nominal_ts = row[0]
                         if cella_nominal_ts.value == "Coating_TS_Nominal":
-                            nominal_ts = values.cell(row = cella_nominal_ts.row, column= cella_nominal_ts.column + 1).value
+                            nominal_ts = values_ts.cell(row = cella_nominal_ts.row, column= cella_nominal_ts.column + 1).value
                     
                     lengthprofiles_ts   = excel_document_ts["LengthProfiles"]
                     rows_avg_ts         = lengthprofiles_ts.iter_rows(min_row=2, max_row=lengthprofiles_ts.max_row, min_col=2, max_col=2, values_only=True)
@@ -177,19 +191,8 @@ def calculate_excel(data_BS: list[list[Any]], data_TS: list[list[Any]], result_f
             mb.showerror("Errore di permesso", f"Non è possibile salvare il file. Controlla se il file è aperto in un'altra applicazione o se hai i permessi necessari. \nDettagli: {e}")
                 
     excel_document_bs.close()
-        
-    # Permetto di definire dall'utente il percorso di destinazione
-    result_file = filedialog.asksaveasfilename(title="Salva il file con nome",initialfile="Misurazioni_Zinco.xlsx", defaultextension=".xlsx", filetypes=[("File Excel", "*.xlsx")])
-    try: 
-        if result_file:
-            result_excel.save(result_file)
-            write_log("ELABORAZIONE TERMINATA")
-    except PermissionError as e:
-        write_log(f"Errore di permesso durante il salvataggio del file: {e}")
-        mb.showerror("Errore di permesso", f"Non è possibile salvare il file. Controlla se il file è aperto in un'altra applicazione o se hai i permessi necessari. \nDettagli: {e}")
-    except Exception as e:
-        write_log(f"Errore durante il salvataggio del file: {e}")
 
+    user_save(result_file, result_excel)  # Chiamo la funzione per salvare il file con il percorso scelto dall'utente
 
 def main() -> None:
 
