@@ -11,6 +11,7 @@ from tkinter import scrolledtext, filedialog, ttk
 from unittest import result
 from pathlib import Path
 import pandas as pd
+import messagebox as mb
 import glob
 from typing import Any
 import openpyxl
@@ -89,95 +90,105 @@ def calculate_excel(data_BS: list[list[Any]], data_TS: list[list[Any]], result_f
         re["N1"] = "TS max"
 
     for i,file in enumerate(data_BS, start=2):         #ciclo sui file excel 
-        excel_document_bs  = openpyxl.load_workbook(file)
+        try:
+            excel_document_bs  = openpyxl.load_workbook(file)
 
-        values          = excel_document_bs["Values"]
-        lengthprofiles  = excel_document_bs["LengthProfiles"]
+            values          = excel_document_bs["Values"]
+            lengthprofiles  = excel_document_bs["LengthProfiles"]
 
 
-        for row in values.iter_rows(min_col=1, max_col=1): 
-            cella_ID = row[0]
-            if cella_ID.value == "CoilID":
-                CoilID_BS = values.cell(row = cella_ID.row, column= cella_ID.column + 1).value
-        #CoilID_BS      = values["B5"].value
-        DateTime        = values["B2"].value
-        
-        
-        #Come con CoilID, ma con nominal
-        Nominal = None
-        for row in values.iter_rows(min_col=1, max_col=1): 
-            cella_nominal = row[0]
-            if cella_nominal.value == "Coating_BS_Nominal":
-                Nominal = values.cell(row = cella_nominal.row, column= cella_nominal.column + 1).value
-        
-        total_length    = lengthprofiles.cell(row=lengthprofiles.max_row, column=1).value
-
-        try: 
-            #Calcoli PER BS
-            rows_avg    = lengthprofiles.iter_rows(min_row=2, max_row=lengthprofiles.max_row, min_col=2, max_col=2, values_only=True)
-            values_avg  = [row[0] for row in rows_avg]
-            avg_bs      = sum(values_avg) / len(values_avg)
-            massimo_bs  = max(values_avg)
-            minimo_bs   = min(values_avg)
-            dev_std_bs  = statistics.stdev(values_avg)
+            for row in values.iter_rows(min_col=1, max_col=1): 
+                cella_ID = row[0]
+                if cella_ID.value == "CoilID":
+                    CoilID_BS = values.cell(row = cella_ID.row, column= cella_ID.column + 1).value
+            #CoilID_BS      = values["B5"].value
+            DateTime        = values["B2"].value
             
-            re.cell(column=1, row=i).value = CoilID_BS
-            re.cell(column=2, row=i).value = DateTime
-            re.cell(column=3, row=i).value = total_length
-            re.cell(column=4, row=i).value = Nominal
-            re.cell(column=5, row=i).value = avg_bs
-            re.cell(column=6, row=i).value = dev_std_bs
-            re.cell(column=7, row=i).value = minimo_bs
-            re.cell(column=8, row=i).value = massimo_bs
-        except Exception as e: 
-            write_log(f"{file}: NOT OK BS - {e} \n")
-            continue
-        finally:
-            chargin_bar['value'] = (i / len(data_BS)) * 100  # Aggiorna la barra di caricamento
-            root.update_idletasks()
+            
+            #Come con CoilID, ma con nominal
+            Nominal = None
+            for row in values.iter_rows(min_col=1, max_col=1): 
+                cella_nominal = row[0]
+                if cella_nominal.value == "Coating_BS_Nominal":
+                    Nominal = values.cell(row = cella_nominal.row, column= cella_nominal.column + 1).value
+            
+            total_length    = lengthprofiles.cell(row=lengthprofiles.max_row, column=1).value
 
-        if CoilID_BS in ts_files: 
             try: 
-                #Calcoli PER TS
-                file_ts             = ts_files[CoilID_BS]
-                excel_document_ts   = openpyxl.load_workbook(file_ts)
-                values_ts           = excel_document_ts["Values"]
-
-                for row in values_ts.iter_rows(min_col=1, max_col=1): 
-                    cella_nominal_ts = row[0]
-                    if cella_nominal_ts.value == "Coating_TS_Nominal":
-                        nominal_ts = values.cell(row = cella_nominal_ts.row, column= cella_nominal_ts.column + 1).value
+                #Calcoli PER BS
+                rows_avg    = lengthprofiles.iter_rows(min_row=2, max_row=lengthprofiles.max_row, min_col=2, max_col=2, values_only=True)
+                values_avg  = [row[0] for row in rows_avg]
+                avg_bs      = sum(values_avg) / len(values_avg)
+                massimo_bs  = max(values_avg)
+                minimo_bs   = min(values_avg)
+                dev_std_bs  = statistics.stdev(values_avg)
                 
-                lengthprofiles_ts   = excel_document_ts["LengthProfiles"]
-                rows_avg_ts         = lengthprofiles_ts.iter_rows(min_row=2, max_row=lengthprofiles_ts.max_row, min_col=2, max_col=2, values_only=True)
-                values_avg_ts       = [row[0] for row in rows_avg_ts]
-                avg_ts              = sum(values_avg_ts) / len(values_avg_ts)
-                massimo_ts          = max(values_avg_ts)
-                minimo_ts           = min(values_avg_ts)
-                dev_std_ts          = statistics.stdev(values_avg_ts)
-                total_length_ts     = lengthprofiles_ts.cell(row=lengthprofiles_ts.max_row, column=1).value
-
-                re.cell(column=9, row=i).value  = total_length_ts
-                re.cell(column=10, row=i).value = nominal_ts
-                re.cell(column=11, row=i).value = avg_ts
-                re.cell(column=12, row=i).value = dev_std_ts
-                re.cell(column=13, row=i).value = minimo_ts
-                re.cell(column=14, row=i).value = massimo_ts
-                print(f"Corrispetivo del CoilID: {CoilID_BS} è presente nel file: {file_ts}")
-
+                re.cell(column=1, row=i).value = CoilID_BS
+                re.cell(column=2, row=i).value = DateTime
+                re.cell(column=3, row=i).value = total_length
+                re.cell(column=4, row=i).value = Nominal
+                re.cell(column=5, row=i).value = avg_bs
+                re.cell(column=6, row=i).value = dev_std_bs
+                re.cell(column=7, row=i).value = minimo_bs
+                re.cell(column=8, row=i).value = massimo_bs
             except Exception as e: 
-                write_log(f"{file_ts}: NOT OK FOR TS - {e} \n")
+                write_log(f"{file}: NOT OK BS - {e} \n")
                 continue
-            finally: 
-                excel_document_ts.close()
+            finally:
+                chargin_bar['value'] = (i / len(data_BS)) * 100  # Aggiorna la barra di caricamento
+                root.update_idletasks()
+
+            if CoilID_BS in ts_files: 
+                try: 
+                    #Calcoli PER TS
+                    file_ts             = ts_files[CoilID_BS]
+                    excel_document_ts   = openpyxl.load_workbook(file_ts)
+                    values_ts           = excel_document_ts["Values"]
+
+                    for row in values_ts.iter_rows(min_col=1, max_col=1): 
+                        cella_nominal_ts = row[0]
+                        if cella_nominal_ts.value == "Coating_TS_Nominal":
+                            nominal_ts = values.cell(row = cella_nominal_ts.row, column= cella_nominal_ts.column + 1).value
+                    
+                    lengthprofiles_ts   = excel_document_ts["LengthProfiles"]
+                    rows_avg_ts         = lengthprofiles_ts.iter_rows(min_row=2, max_row=lengthprofiles_ts.max_row, min_col=2, max_col=2, values_only=True)
+                    values_avg_ts       = [row[0] for row in rows_avg_ts]
+                    avg_ts              = sum(values_avg_ts) / len(values_avg_ts)
+                    massimo_ts          = max(values_avg_ts)
+                    minimo_ts           = min(values_avg_ts)
+                    dev_std_ts          = statistics.stdev(values_avg_ts)
+                    total_length_ts     = lengthprofiles_ts.cell(row=lengthprofiles_ts.max_row, column=1).value
+
+                    re.cell(column=9, row=i).value  = total_length_ts
+                    re.cell(column=10, row=i).value = nominal_ts
+                    re.cell(column=11, row=i).value = avg_ts
+                    re.cell(column=12, row=i).value = dev_std_ts
+                    re.cell(column=13, row=i).value = minimo_ts
+                    re.cell(column=14, row=i).value = massimo_ts
+                    print(f"Corrispetivo del CoilID: {CoilID_BS} è presente nel file: {file_ts}")
+
+                except Exception as e: 
+                    write_log(f"{file_ts}: NOT OK FOR TS - {e} \n")
+                    continue
+                finally: 
+                    excel_document_ts.close()
+        except PermissionError as e:
+            write_log(f"Errore di permesso durante il salvataggio del file: {e}")
+            mb.showerror("Errore di permesso", f"Non è possibile salvare il file. Controlla se il file è aperto in un'altra applicazione o se hai i permessi necessari. \nDettagli: {e}")
                 
     excel_document_bs.close()
         
     # Permetto di definire dall'utente il percorso di destinazione
     result_file = filedialog.asksaveasfilename(title="Salva il file con nome",initialfile="Misurazioni_Zinco.xlsx", defaultextension=".xlsx", filetypes=[("File Excel", "*.xlsx")])
-    if result_file:
-        result_excel.save(result_file)
-        write_log("ELABORAZIONE TERMINATA")
+    try: 
+        if result_file:
+            result_excel.save(result_file)
+            write_log("ELABORAZIONE TERMINATA")
+    except PermissionError as e:
+        write_log(f"Errore di permesso durante il salvataggio del file: {e}")
+        mb.showerror("Errore di permesso", f"Non è possibile salvare il file. Controlla se il file è aperto in un'altra applicazione o se hai i permessi necessari. \nDettagli: {e}")
+    except Exception as e:
+        write_log(f"Errore durante il salvataggio del file: {e}")
 
 
 def main() -> None:
